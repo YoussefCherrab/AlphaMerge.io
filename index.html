@@ -423,7 +423,7 @@ body{display:flex;flex-direction:column;min-height:100dvh;}
   <!-- SCORES -->
   <div class="score-row">
     <div class="sbox">
-      <span class="s-label">Score</span>
+      <span class="s-label">Moves</span>
       <span class="s-val" id="score">0</span>
     </div>
     <div class="sbox">
@@ -502,8 +502,8 @@ body{display:flex;flex-direction:column;min-height:100dvh;}
       <li><strong>Lose:</strong> Board full, no merges possible.</li>
     </ul>
 
-    <h2>Scoring</h2>
-    <p>Each merge at position <em>n</em> earns 2<sup>n+1</sup> points.
+    <h2>Moves</h2>
+    <p>Every valid swipe counts as one move. Try to reach Z in as few moves as possible!
        <strong>Best</strong> shows the highest letter you ever created.</p>
 
     <h2>Letter & Color Reference</h2>
@@ -677,7 +677,7 @@ function render(ms,ns){
 function slideRow(row){
   let r=row.filter(v=>v!==-1);
   for(let i=0;i<r.length-1;i++){
-    if(r[i]===r[i+1]&&r[i]<25){r[i]++;score+=Math.pow(2,r[i]+1);r.splice(i+1,1);}
+    if(r[i]===r[i+1]&&r[i]<25){r[i]++;r.splice(i+1,1);}
   }
   while(r.length<SZ)r.push(-1);
   return r;
@@ -718,11 +718,11 @@ function humanMove(dir){
   pushU();
   const{chg,ms}=moveBoard(dir);
   if(!chg){uStack.pop();return;}
+  score++;
   const bef=cloneB(board);spawn();
   const ns=new Set();
   for(let r=0;r<SZ;r++)for(let c=0;c<SZ;c++)if(board[r][c]!==-1&&bef[r][c]===-1)ns.add(r*SZ+c);
   render(ms,ns);
-  if(score>bScore){bScore=score;saveSt();}
   const el=document.getElementById('score');
   el.textContent=score;
   el.classList.remove('pop');void el.offsetWidth;el.classList.add('pop');
@@ -820,4 +820,4 @@ document.getElementById('inst-x').onclick=()=>document.getElementById('install-b
 loadSt();buildGhosts();buildRef();initBoard();render(null,null);
 </script>
 </body>
-  </html>
+</html>
