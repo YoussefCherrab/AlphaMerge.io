@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#f0ebe3">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="AlphaMerge">
+<meta name="description" content="AlphaMerge — Merge letter tiles from A to Z. Free puzzle game.">
+<meta name="author" content="Youssef Cherrab">
+<meta name="robots" content="index,follow">
+<meta property="og:title" content="AlphaMerge — Merge Letters to Z">
+<meta property="og:description" content="Merge letter tiles from A to Z. Free puzzle game.">
+<meta property="og:type" content="website">
+<title>AlphaMerge — Merge Letters A to Z</title>
+<link rel="canonical" href="https://alphamerge.github.io">
+
+<!-- PWA Manifest injected at runtime -->
+<script>
+(function(){
+  const manifest={name:"AlphaMerge",short_name:"AlphaMerge",description:"Merge letter tiles from A to Z.",start_url:"./",display:"standalone",background_color:"#f0ebe3",theme_color:"#f0ebe3",orientation:"portrait-primary",
+  icons:[{src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='32' fill='%23b5a99a'/%3E%3Ctext x='96' y='138' font-size='110' text-anchor='middle' font-family='Georgia,serif' fill='%23f0ebe3' font-weight='bold'%3EA%3C/text%3E%3C/svg%3E",sizes:"192x192",type:"image/svg+xml"},{src:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%23b5a99a'/%3E%3Ctext x='256' y='370' font-size='300' text-anchor='middle' font-family='Georgia,serif' fill='%23f0ebe3' font-weight='bold'%3EA%3C/text%3E%3C/svg%3E",sizes:"512x512",type:"image/svg+xml"}]};
+  const blob=new Blob([JSON.stringify(manifest)],{type:'application/json'});
+  const link=document.createElement('link');
+  link.rel='manifest';link.href=URL.createObjectURL(blob);
+  document.head.appendChild(link);
+})();
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+<style>
+/* ══ TOKENS — warm sandy palette ══ */
+:root{
+  --bg:#f0ebe3;
+  --board:#b5a99a;
+  --cell-empty:#c9bdb0;
+  --text:#4a3f35;
+  --muted:#8a7d72;
+  --score-bg:#e8e1d8;
+  --score-bd:#d4ccc3;
+  --btn-bg:#e0d8ce;
+  --btn-bd:#c9bdb0;
+  --btn-act:#d0c8be;
+  --r:14px;
+  --gap:10px;
+  /* cell = fills space neatly on any phone */
+  --cell:clamp(60px,calc((min(94vw,440px) - 56px)/4),100px);
+  --bw:calc(var(--cell)*4 + var(--gap)*5); /* board width: 4 cells + 5 gap (sides+inner) */
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{
+  height:100%;background:var(--bg);color:var(--text);
+  font-family:'Nunito',sans-serif;
+  overscroll-behavior:none;
+  user-select:none;-webkit-user-select:none;
+}
+body{display:flex;flex-direction:column;min-height:100dvh;}
+
+/* ══ PAGE ROUTER ══ */
+.page{display:none;flex:1;flex-direction:column;}
+.page.active{display:flex;}
+
+/* ══ SIDEBAR ══ */
+.sb-backdrop{
+  display:none;position:fixed;inset:0;
+  background:rgba(50,40,32,.45);z-index:400;
+  backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);
+}
+.sb-backdrop.open{display:block;}
+.sidebar{
+  position:fixed;top:0;right:0;
+  width:min(280px,82vw);height:100%;
+  background:var(--bg);border-left:2px solid var(--btn-bd);
+  z-index:401;
+  transform:translateX(110%);
+  transition:transform .26s cubic-bezier(.4,0,.2,1);
+  display:flex;flex-direction:column;overflow-y:auto;
+}
+.sidebar.open{transform:translateX(0);}
+.sb-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:20px 18px 14px;
+  border-bottom:1.5px solid var(--btn-bd);
+}
+.sb-logo{font-size:18px;font-weight:900;color:var(--text);letter-spacing:-.5px;}
+.sb-logo span{color:var(--board);}
+.sb-close{
+  background:var(--btn-bg);border:1.5px solid var(--btn-bd);border-radius:10px;
+  width:36px;height:36px;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:18px;color:var(--text);transition:background .15s;
+}
+.sb-close:hover{background:var(--btn-act);}
+.sb-nav{list-style:none;padding:10px 0;}
+.sb-nav li a{
+  display:flex;align-items:center;gap:12px;
+  padding:14px 22px;font-size:15px;font-weight:700;color:var(--text);
+  cursor:pointer;text-decoration:none;
+  border-right:3px solid transparent;
+  transition:background .15s,border-color .15s,color .15s;
+}
+.sb-nav li a:hover{background:var(--score-bg);}
+.sb-nav li a.on{background:var(--score-bg);border-right-color:var(--board);color:var(--board);}
+.sb-nav li a .ico{font-size:18px;width:24px;text-align:center;}
+.sb-div{height:1.5px;background:var(--btn-bd);margin:6px 16px;}
+.sb-foot{
+  margin-top:auto;padding:14px 18px;
+  font-size:11px;color:var(--muted);line-height:1.7;
+  border-top:1.5px solid var(--btn-bd);
+}
+
+/* ══ INSTALL BANNER ══ */
+#install-banner{
+  display:none;background:var(--board);color:#f0ebe3;
+  padding:10px 14px;align-items:center;gap:10px;font-size:13px;font-weight:700;
+  flex-shrink:0;
+}
+#install-banner.show{display:flex;}
+#install-banner button{
+  margin-left:auto;background:#f0ebe3;color:var(--board);
+  border:none;border-radius:8px;padding:6px 14px;
+  font-size:13px;font-weight:800;font-family:'Nunito',sans-serif;cursor:pointer;
+  white-space:nowrap;
+}
+#inst-x{background:none!important;color:#f0ebe3!important;padding:4px 8px!important;font-size:18px!important;}
+
+/* ══ AD SLOTS ══ */
+.ad{
+  background:var(--score-bg);border:1.5px dashed var(--btn-bd);
+  border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--muted);font-size:11px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.6px;flex-shrink:0;
+}
+.ad-top{height:64px;margin:10px 14px 0;}
+.ad-bot{height:80px;margin:12px 14px 0;}
+
+/* ══ GAME PAGE ══ */
+#page-game{
+  max-width:480px;width:100%;margin:0 auto;
+  padding-bottom:max(12px,env(safe-area-inset-bottom));
+  align-items:stretch;
+}
+
+/* Header row: [New] · Title · [☰] */
+.g-hdr{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 14px 8px;gap:8px;
+}
+.btn-new{
+  background:var(--btn-bg);border:1.5px solid var(--btn-bd);border-radius:12px;
+  padding:9px 14px;font-size:13px;font-weight:800;color:var(--text);
+  font-family:'Nunito',sans-serif;cursor:pointer;
+  display:flex;align-items:center;gap:5px;white-space:nowrap;
+  transition:background .15s,transform .1s;
+}
+.btn-new:hover{background:var(--btn-act);}
+.btn-new:active{transform:scale(.95);}
+.g-title{
+  font-size:clamp(22px,6.5vw,38px);font-weight:900;
+  color:var(--text);letter-spacing:-1.5px;text-align:center;flex:1;
+}
+.btn-ham{
+  background:var(--btn-bg);border:1.5px solid var(--btn-bd);border-radius:12px;
+  width:44px;height:44px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+  cursor:pointer;transition:background .15s,transform .1s;flex-shrink:0;
+}
+.btn-ham:hover{background:var(--btn-act);}
+.btn-ham:active{transform:scale(.95);}
+.btn-ham span{display:block;width:20px;height:2px;background:var(--text);border-radius:2px;}
+
+/* Score row */
+.score-row{
+  display:flex;gap:10px;padding:0 14px 10px;
+}
+.sbox{
+  flex:1;background:var(--score-bg);border:1.5px solid var(--score-bd);border-radius:14px;
+  padding:10px 16px;display:flex;align-items:center;justify-content:space-between;
+}
+.s-label{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;}
+.s-val{font-size:22px;font-weight:900;color:var(--text);}
+.s-val.pop{animation:spop .22s ease;}
+@keyframes spop{50%{transform:scale(1.3);}}
+/* Best-letter mini-tile */
+.bl-tile{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:38px;height:38px;border-radius:9px;
+  font-size:20px;font-weight:900;
+  background:var(--cell-empty);color:var(--muted);
+  transition:background .25s,color .25s,box-shadow .25s;
+}
+
+/* ══ BOARD ══ */
+.board-area{display:flex;justify-content:center;padding:0 14px;}
+.board-wrap{
+  background:var(--board);border-radius:18px;
+  padding:var(--gap);position:relative;
+  width:var(--bw);
+  box-shadow:0 4px 28px rgba(60,50,42,.18),inset 0 1px 0 rgba(255,255,255,.1);
+}
+/* ghost layer */
+.bbg{
+  position:absolute;inset:var(--gap);
+  display:grid;
+  grid-template-columns:repeat(4,var(--cell));
+  grid-template-rows:repeat(4,var(--cell));
+  gap:var(--gap);pointer-events:none;
+}
+.ghost{background:var(--cell-empty);border-radius:11px;}
+/* live layer */
+.blive{
+  display:grid;
+  grid-template-columns:repeat(4,var(--cell));
+  grid-template-rows:repeat(4,var(--cell));
+  gap:var(--gap);position:relative;z-index:1;
+}
+.tile{
+  border-radius:11px;
+  display:flex;align-items:center;justify-content:center;
+  font-weight:900;font-size:clamp(18px,5.5vw,36px);
+  position:relative;overflow:hidden;
+  box-shadow:0 2px 6px rgba(0,0,0,.10);
+  transition:background .08s;
+}
+.tile::after{
+  content:'';position:absolute;inset:0;border-radius:inherit;
+  background:linear-gradient(140deg,rgba(255,255,255,.18) 0%,transparent 55%);
+  pointer-events:none;
+}
+.tile.tnew{animation:tnew .14s ease;}
+.tile.tpop{animation:tpop .22s cubic-bezier(.34,1.9,.64,1);}
+@keyframes tnew{from{transform:scale(0);}to{transform:scale(1);}}
+@keyframes tpop{0%,100%{transform:scale(1);}50%{transform:scale(1.18);}}
+.tile.sm{font-size:clamp(13px,3.8vw,24px);}
+.tempty{background:var(--cell-empty);box-shadow:none;}
+.tempty::after{display:none;}
+
+/* tile palette */
+.t0{background:#ede3d5;color:#6b5e52;}.t1{background:#e5d9c4;color:#6b5e52;}
+.t2{background:#f2a96c;color:#fff;}.t3{background:#f0906a;color:#fff;}
+.t4{background:#ee7761;color:#fff;}.t5{background:#ed5b3a;color:#fff;}
+.t6{background:#e8c94c;color:#fff;}.t7{background:#e6c538;color:#fff;}
+.t8{background:#e4c124;color:#fff;}.t9{background:#e2bd10;color:#fff;}
+.t10{background:#e0b900;color:#fff;}.t11{background:#3c3a32;color:#f9f6f2;}
+.t12{background:#2d2b24;color:#f9f6f2;}.t13{background:#6b5ce7;color:#fff;}
+.t14{background:#5a4fd6;color:#fff;}.t15{background:#4840c4;color:#fff;}
+.t16{background:#3832b2;color:#fff;}.t17{background:#ef4444;color:#fff;}
+.t18{background:#dc2626;color:#fff;}.t19{background:#b91c1c;color:#fff;}
+.t20{background:#991b1b;color:#fff;}.t21{background:#10b981;color:#fff;}
+.t22{background:#059669;color:#fff;}.t23{background:#047857;color:#fff;}
+.t24{background:#065f46;color:#fff;}
+.t25{background:#f59e0b;color:#fff;
+  box-shadow:0 0 0 3px #fcd34d,0 0 22px #f59e0b88;
+  animation:zglow 1.4s ease-in-out infinite;}
+@keyframes zglow{
+  0%,100%{box-shadow:0 0 0 3px #fcd34d,0 0 14px #f59e0b55;}
+  50%{box-shadow:0 0 0 3px #fcd34d,0 0 32px #f59e0baa;}
+}
+
+/* overlay */
+.overlay{
+  position:absolute;inset:0;border-radius:18px;
+  background:rgba(240,235,227,.84);z-index:100;
+  display:none;flex-direction:column;
+  align-items:center;justify-content:center;
+  gap:10px;text-align:center;padding:20px;
+  animation:ovin .3s ease;
+}
+@keyframes ovin{from{opacity:0;}to{opacity:1;}}
+.overlay.show{display:flex;}
+.ov-title{font-size:clamp(24px,7vw,40px);font-weight:900;color:var(--text);letter-spacing:-1px;}
+.ov-title.win{color:#c08a00;}
+.ov-sub{font-size:14px;color:var(--muted);}
+.ov-btns{display:flex;gap:8px;margin-top:6px;}
+.ov-btn{
+  background:var(--board);color:#f0ebe3;border:none;border-radius:11px;
+  padding:10px 18px;font-size:14px;font-weight:800;cursor:pointer;
+  font-family:'Nunito',sans-serif;transition:opacity .15s;
+}
+.ov-btn:hover{opacity:.85;}
+
+/* ══ BOTTOM CONTROLS (below board) ══ */
+.bot-ctrl{
+  display:flex;justify-content:center;
+  padding:12px 14px 4px;
+}
+.ctrl-group{
+  background:var(--score-bg);border:1.5px solid var(--score-bd);
+  border-radius:18px;display:flex;overflow:hidden;
+}
+.ctrl-btn{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:4px;padding:12px 28px;
+  background:none;border:none;cursor:pointer;
+  font-family:'Nunito',sans-serif;
+  position:relative;transition:background .15s,transform .1s;
+}
+.ctrl-btn+.ctrl-btn{border-left:1.5px solid var(--btn-bd);}
+.ctrl-btn:hover{background:var(--btn-act);}
+.ctrl-btn:active{transform:scale(.94);}
+.ctrl-icon{font-size:26px;line-height:1;}
+.ctrl-lbl{font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.4px;text-transform:uppercase;}
+/* undo count badge */
+.ubadge{
+  position:absolute;top:8px;right:20px;
+  background:var(--board);color:#f0ebe3;
+  border-radius:50%;width:16px;height:16px;
+  font-size:9px;font-weight:900;
+  display:flex;align-items:center;justify-content:center;
+}
+
+/* ══ INLINE FOOTER (inside game page) ══ */
+.g-footer{
+  text-align:center;padding:10px 14px 4px;
+  font-size:12px;color:var(--muted);font-weight:600;
+}
+.g-footer strong{color:var(--text);}
+
+/* ══ CONTENT PAGES ══ */
+.cpage{overflow-y:auto;}
+.cwrap{max-width:600px;margin:0 auto;padding:22px 18px 56px;}
+.cwrap .back-link{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:14px;font-weight:700;color:var(--board);
+  cursor:pointer;margin-bottom:16px;
+}
+.cwrap .back-link:hover{text-decoration:underline;}
+.cwrap h1{font-size:clamp(20px,5vw,30px);font-weight:900;color:var(--text);
+  margin-bottom:16px;padding-bottom:10px;
+  border-bottom:2px solid var(--btn-bd);letter-spacing:-.5px;}
+.cwrap h2{font-size:17px;font-weight:800;color:var(--text);margin:20px 0 7px;}
+.cwrap p{font-size:14px;color:var(--text);line-height:1.8;margin-bottom:10px;}
+.cwrap ul{padding-left:18px;font-size:14px;color:var(--text);line-height:1.8;margin-bottom:10px;}
+.cwrap a{color:var(--board);cursor:pointer;font-weight:700;}
+.cwrap a:hover{text-decoration:underline;}
+.hgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;margin:12px 0;}
+.hcard{background:var(--score-bg);border-radius:12px;padding:14px;border-left:3px solid var(--board);}
+.hcard h3{font-size:13px;font-weight:800;color:var(--text);margin-bottom:4px;}
+.hcard p{font-size:13px;color:var(--text);line-height:1.6;margin:0;}
+.atab{display:grid;grid-template-columns:repeat(auto-fill,minmax(46px,1fr));gap:5px;margin:12px 0;}
+.acell{border-radius:9px;padding:8px 3px;display:flex;flex-direction:column;align-items:center;gap:2px;font-weight:900;font-size:15px;}
+.acell small{font-size:8px;font-weight:700;opacity:.85;}
+
+/* contact */
+.cform{background:var(--score-bg);border-radius:14px;padding:20px;margin-top:12px;}
+.flabel{display:block;font-size:11px;font-weight:800;color:var(--text);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px;}
+.finp,.fta{width:100%;background:#fff;border:1.5px solid var(--btn-bd);border-radius:9px;
+  padding:9px 12px;font-size:14px;color:var(--text);font-family:'Nunito',sans-serif;
+  outline:none;transition:border-color .2s;margin-bottom:10px;}
+.finp:focus,.fta:focus{border-color:var(--board);}
+.fta{min-height:100px;resize:vertical;}
+.fsend{width:100%;padding:12px;background:var(--board);border:none;border-radius:9px;
+  color:#f0ebe3;font-size:15px;font-weight:800;font-family:'Nunito',sans-serif;
+  cursor:pointer;transition:opacity .15s,transform .1s;}
+.fsend:hover{opacity:.88;}
+.fsend:active{transform:scale(.98);}
+.fstat{text-align:center;padding:10px;border-radius:9px;font-size:13px;font-weight:700;margin-top:8px;display:none;}
+.fstat.ok{background:#d1fae5;color:#065f46;display:block;}
+.fstat.er{background:#fee2e2;color:#991b1b;display:block;}
+
+/* ══ RESPONSIVE ══ */
+@media(min-width:500px){
+  :root{--cell:min(100px,calc((440px - 56px)/4));}
+  #page-game{padding-top:6px;}
+}
+@media(max-width:360px){
+  :root{--gap:8px;}
+  .g-title{font-size:20px;}
+  .btn-new{font-size:11px;padding:8px 10px;}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ SIDEBAR BACKDROP ══ -->
+<div class="sb-backdrop" id="sb-bd" onclick="closeSB()"></div>
+
+<!-- ══ SIDEBAR ══ -->
+<div class="sidebar" id="sidebar">
+  <div class="sb-head">
+    <div class="sb-logo">Alpha<span>Merge</span></div>
+    <div class="sb-close" onclick="closeSB()">✕</div>
+  </div>
+  <ul class="sb-nav">
+    <li><a id="sn-game"    onclick="gp('game');closeSB();"    class="on"><span class="ico">▶</span>Play</a></li>
+    <li><a id="sn-how"     onclick="gp('how');closeSB();"><span class="ico">📖</span>How to Play</a></li>
+    <div class="sb-div"></div>
+    <li><a id="sn-about"   onclick="gp('about');closeSB();"><span class="ico">ℹ️</span>About</a></li>
+    <li><a id="sn-privacy" onclick="gp('privacy');closeSB();"><span class="ico">🔒</span>Privacy</a></li>
+    <li><a id="sn-contact" onclick="gp('contact');closeSB();"><span class="ico">✉️</span>Contact</a></li>
+  </ul>
+  <div class="sb-foot">© 2026 AlphaMerge<br>Created by Youssef Cherrab</div>
+</div>
+
+<!-- ══ PWA INSTALL BANNER ══ -->
+<div id="install-banner">
+  📲 Install AlphaMerge on your device!
+  <button id="inst-btn">Install</button>
+  <button id="inst-x">✕</button>
+</div>
+
+<!-- ══════════════════════════════════════════
+     PAGE: GAME
+══════════════════════════════════════════ -->
+<div class="page active" id="page-game">
+
+  <!-- AD TOP -->
+  <div class="ad ad-top">Advertisement · 320×50</div>
+
+  <!-- HEADER: [↻ New] · AlphaMerge · [☰] -->
+  <div class="g-hdr">
+    <button class="btn-new" onclick="resetGame()">↻ New</button>
+    <div class="g-title">AlphaMerge</div>
+    <div class="btn-ham" onclick="openSB()">
+      <span></span><span></span><span></span>
+    </div>
+  </div>
+
+  <!-- SCORES -->
+  <div class="score-row">
+    <div class="sbox">
+      <span class="s-label">Score</span>
+      <span class="s-val" id="score">0</span>
+    </div>
+    <div class="sbox">
+      <span class="s-label">Best</span>
+      <span class="bl-tile" id="best-tile">—</span>
+    </div>
+  </div>
+
+  <!-- BOARD -->
+  <div class="board-area">
+    <div class="board-wrap" id="bwrap">
+      <div class="bbg" id="bbg"></div>
+      <div class="blive" id="blive"></div>
+      <div class="overlay" id="overlay">
+        <div class="ov-title" id="ov-title">Game Over!</div>
+        <div class="ov-sub"   id="ov-sub">No moves left.</div>
+        <div class="ov-btns">
+          <button class="ov-btn" onclick="hideOv()">✕ Close</button>
+          <button class="ov-btn" id="ov-act" onclick="resetGame()">↻ Again</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM CONTROLS (below board) -->
+  <div class="bot-ctrl">
+    <div class="ctrl-group">
+      <button class="ctrl-btn" onclick="undoMove()">
+        <span class="ctrl-icon">↩</span>
+        <span class="ctrl-lbl">Undo</span>
+        <span class="ubadge" id="ubadge">3</span>
+      </button>
+      <button class="ctrl-btn" onclick="gp('how')">
+        <span class="ctrl-icon">❓</span>
+        <span class="ctrl-lbl">Help</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- AD BOTTOM -->
+  <div class="ad ad-bot">Advertisement · 320×100</div>
+
+  <!-- FOOTER -->
+  <div class="g-footer">
+    <strong>Youssef Cherrab</strong> · AlphaMerge · 2026
+  </div>
+
+</div><!-- /page-game -->
+
+<!-- ══════════════════════════════════════════
+     PAGE: HOW TO PLAY
+══════════════════════════════════════════ -->
+<div class="page cpage" id="page-how">
+  <div class="cwrap">
+    <div class="back-link" onclick="gp('game')">← Back to game</div>
+    <h1>How to Play</h1>
+    <p>Slide letter tiles on a 4×4 grid. Two matching letters merge into the next —
+       <strong>A+A=B</strong>, all the way to <strong>Z</strong>. Reach Z to win!</p>
+
+    <h2>Controls</h2>
+    <div class="hgrid">
+      <div class="hcard"><h3>⌨ Keyboard</h3><p>Arrow keys ← → ↑ ↓.</p></div>
+      <div class="hcard"><h3>👆 Swipe</h3><p>Swipe anywhere on the board.</p></div>
+      <div class="hcard"><h3>↩ Undo</h3><p>3 undos per game. Badge shows remaining.</p></div>
+    </div>
+
+    <h2>Merge Chain</h2>
+    <ul>
+      <li>A+A=B · B+B=C · … · Y+Y=Z 🎉</li>
+      <li>One merge per tile per move.</li>
+    </ul>
+
+    <h2>Win / Lose</h2>
+    <ul>
+      <li><strong>Win:</strong> Create a Z tile — keep playing to beat your score!</li>
+      <li><strong>Lose:</strong> Board full, no merges possible.</li>
+    </ul>
+
+    <h2>Scoring</h2>
+    <p>Each merge at position <em>n</em> earns 2<sup>n+1</sup> points.
+       <strong>Best</strong> shows the highest letter you ever created.</p>
+
+    <h2>Letter & Color Reference</h2>
+    <div class="atab" id="alpha-ref"></div>
+
+    <h2>Tips</h2>
+    <ul>
+      <li>Keep your highest tile in a corner — never slide it away.</li>
+      <li>Build a descending chain along one edge so merges cascade.</li>
+      <li>Save undos for emergencies, not routine mistakes.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     PAGE: ABOUT
+══════════════════════════════════════════ -->
+<div class="page cpage" id="page-about">
+  <div class="cwrap">
+    <div class="back-link" onclick="gp('game')">← Back to game</div>
+    <h1>About AlphaMerge</h1>
+    <p>AlphaMerge is a free browser puzzle game created by <strong>Youssef Cherrab</strong>.
+       Instead of numbers you advance through the <strong>26 letters of the alphabet</strong>.</p>
+    <h2>Why Letters?</h2>
+    <p>Everyone knows A, B, C — the chain is immediately intuitive and accessible to all ages.</p>
+    <h2>Technology</h2>
+    <p>Pure HTML, CSS &amp; JavaScript. No frameworks. Installable as a PWA.
+       Scores stored in <code>localStorage</code>.</p>
+    <h2>Creator</h2>
+    <p>Made with ♥ by <strong>Youssef Cherrab</strong> ·
+       <a href="mailto:Ycherrab@outlook.com">Ycherrab@outlook.com</a></p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     PAGE: PRIVACY
+══════════════════════════════════════════ -->
+<div class="page cpage" id="page-privacy">
+  <div class="cwrap">
+    <div class="back-link" onclick="gp('game')">← Back to game</div>
+    <h1>Privacy Policy</h1>
+    <p><em>Last updated: April 24, 2026</em></p>
+    <h2>Data We Handle</h2>
+    <ul>
+      <li><strong>localStorage:</strong> Best score &amp; letter — stays on your device only.</li>
+      <li><strong>Contact form:</strong> Sent via Formspree to our inbox only.</li>
+      <li><strong>Google AdSense:</strong> May use cookies. Opt out at
+          <a href="https://www.google.com/settings/ads" target="_blank" rel="noopener">Google Ads Settings</a>.</li>
+    </ul>
+    <h2>Children</h2>
+    <p>No data knowingly collected from under-13s. No accounts required.</p>
+    <h2>Hosting</h2>
+    <p>GitHub Pages may log standard server data.
+       <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub Privacy</a>.</p>
+    <h2>Contact</h2>
+    <p><a href="mailto:Ycherrab@outlook.com">Ycherrab@outlook.com</a></p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     PAGE: CONTACT
+══════════════════════════════════════════ -->
+<div class="page cpage" id="page-contact">
+  <div class="cwrap">
+    <div class="back-link" onclick="gp('game')">← Back to game</div>
+    <h1>Contact</h1>
+    <p>Found a bug or want to say hello? Fill the form or email
+       <a href="mailto:Ycherrab@outlook.com">Ycherrab@outlook.com</a>.</p>
+    <div class="cform">
+      <label class="flabel" for="fn">Name *</label>
+      <input class="finp" type="text"  id="fn" placeholder="Your name" autocomplete="name">
+      <label class="flabel" for="fe">Email *</label>
+      <input class="finp" type="email" id="fe" placeholder="you@example.com" autocomplete="email">
+      <label class="flabel" for="fs">Subject</label>
+      <input class="finp" type="text"  id="fs" placeholder="Bug / Feedback / Other">
+      <label class="flabel" for="fm">Message *</label>
+      <textarea class="fta" id="fm" placeholder="Write your message…"></textarea>
+      <button class="fsend" id="fsend" onclick="submitContact()">✉ Send Message</button>
+      <div class="fstat" id="fstat"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════ -->
+<script>
+"use strict";
+// ── CONSTANTS ──────────────────────────────
+const LTRS='ABCDEFGHIJKLMNOPQRSTUVWXYZ',SZ=4,MAXU=3;
+const TC=['#ede3d5','#e5d9c4','#f2a96c','#f0906a','#ee7761','#ed5b3a',
+          '#e8c94c','#e6c538','#e4c124','#e2bd10','#e0b900','#3c3a32',
+          '#2d2b24','#6b5ce7','#5a4fd6','#4840c4','#3832b2','#ef4444',
+          '#dc2626','#b91c1c','#991b1b','#10b981','#059669','#047857',
+          '#065f46','#f59e0b'];
+const TX=['#6b5e52','#6b5e52','#fff','#fff','#fff','#fff',
+          '#fff','#fff','#fff','#fff','#fff','#f9f6f2',
+          '#f9f6f2','#fff','#fff','#fff','#fff','#fff',
+          '#fff','#fff','#fff','#fff','#fff','#fff','#fff','#fff'];
+
+// ── STATE ──────────────────────────────────
+let board=[],score=0,bScore=0,bLetter=-1;
+let hasWon=false,isDead=false,uLeft=MAXU,uStack=[];
+
+// ── STORAGE ────────────────────────────────
+function loadSt(){
+  try{
+    bScore=+localStorage.getItem('am_bs')||0;
+    const bl=localStorage.getItem('am_bl');
+    if(bl!==null&&!isNaN(+bl)&&+bl>=0) bLetter=+bl;
+  }catch(e){}
+  paintBest();
+}
+function saveSt(){
+  try{localStorage.setItem('am_bs',bScore);localStorage.setItem('am_bl',bLetter);}catch(e){}
+}
+// ── BEST TILE ──────────────────────────────
+function paintBest(){
+  const el=document.getElementById('best-tile');
+  if(!el) return;
+  if(bLetter<0){el.textContent='—';el.style.cssText='';return;}
+  el.textContent=LTRS[bLetter];
+  el.style.background=TC[bLetter];
+  el.style.color=TX[bLetter];
+  el.style.boxShadow=bLetter===25?'0 0 0 2px #fcd34d,0 0 12px #f59e0b88':'none';
+}
+
+// ── BOARD ──────────────────────────────────
+const cloneB=b=>b.map(r=>[...r]);
+function initBoard(){
+  board=Array.from({length:SZ},()=>Array(SZ).fill(-1));
+  score=0;hasWon=false;isDead=false;uLeft=MAXU;uStack=[];
+  document.getElementById('score').textContent=0;
+  document.getElementById('ubadge').textContent=uLeft;
+  spawn();spawn();
+}
+function spawn(){
+  const emp=[];
+  for(let r=0;r<SZ;r++)for(let c=0;c<SZ;c++)if(board[r][c]===-1)emp.push(r*SZ+c);
+  if(!emp.length)return false;
+  const i=emp[Math.floor(Math.random()*emp.length)];
+  board[~~(i/SZ)][i%SZ]=Math.random()<.9?0:1;
+  return true;
+}
+
+// ── RENDER ─────────────────────────────────
+function buildGhosts(){
+  const bg=document.getElementById('bbg');bg.innerHTML='';
+  for(let i=0;i<16;i++){const d=document.createElement('div');d.className='ghost';bg.appendChild(d);}
+}
+function render(ms,ns){
+  const lv=document.getElementById('blive');lv.innerHTML='';
+  let mx=-1;
+  for(let r=0;r<SZ;r++)for(let c=0;c<SZ;c++){
+    const v=board[r][c],idx=r*SZ+c,d=document.createElement('div');
+    if(v<0){d.className='tile tempty';}
+    else{
+      if(v>mx)mx=v;
+      d.className=`tile t${Math.min(v,25)}`;
+      if(ms&&ms.has(idx))d.classList.add('tpop');
+      else if(ns&&ns.has(idx))d.classList.add('tnew');
+      if(v>=14)d.classList.add('sm');
+      d.textContent=LTRS[v];
+    }
+    lv.appendChild(d);
+  }
+  if(mx>bLetter){bLetter=mx;saveSt();paintBest();}
+}
+
+// ── SLIDE ──────────────────────────────────
+function slideRow(row){
+  let r=row.filter(v=>v!==-1);
+  for(let i=0;i<r.length-1;i++){
+    if(r[i]===r[i+1]&&r[i]<25){r[i]++;score+=Math.pow(2,r[i]+1);r.splice(i+1,1);}
+  }
+  while(r.length<SZ)r.push(-1);
+  return r;
+}
+function moveBoard(dir){
+  const old=cloneB(board);
+  if(dir===2||dir===3){
+    for(let r=0;r<SZ;r++){let rw=[...board[r]];if(dir===3){rw.reverse();rw=slideRow(rw);rw.reverse();}else rw=slideRow(rw);board[r]=rw;}
+  }else{
+    for(let c=0;c<SZ;c++){let col=[];for(let r=0;r<SZ;r++)col.push(board[r][c]);if(dir===1){col.reverse();col=slideRow(col);col.reverse();}else col=slideRow(col);for(let r=0;r<SZ;r++)board[r][c]=col[r];}
+  }
+  let chg=false;const ms=new Set();
+  for(let r=0;r<SZ;r++)for(let c=0;c<SZ;c++){const n=board[r][c],o=old[r][c];if(n!==o)chg=true;if(n>0&&o>=0&&n>o)ms.add(r*SZ+c);}
+  return{chg,ms};
+}
+function canMove(){
+  for(let r=0;r<SZ;r++)for(let c=0;c<SZ;c++){
+    if(board[r][c]===-1)return true;
+    if(c<SZ-1&&board[r][c]===board[r][c+1])return true;
+    if(r<SZ-1&&board[r][c]===board[r+1][c])return true;
+  }return false;
+}
+function hasZ(){for(let r=0;r<SZ;r++)for(let c=0;c<SZ;c++)if(board[r][c]>=25)return true;return false;}
+
+// ── UNDO ───────────────────────────────────
+function pushU(){uStack.push({board:cloneB(board),score});if(uStack.length>12)uStack.shift();}
+function undoMove(){
+  if(uLeft<=0||!uStack.length)return;
+  const s=uStack.pop();board=s.board;score=s.score;uLeft--;isDead=false;
+  document.getElementById('ubadge').textContent=uLeft;
+  document.getElementById('score').textContent=score;
+  hideOv();render(null,null);
+}
+
+// ── MOVE ───────────────────────────────────
+function humanMove(dir){
+  if(isDead)return;
+  pushU();
+  const{chg,ms}=moveBoard(dir);
+  if(!chg){uStack.pop();return;}
+  const bef=cloneB(board);spawn();
+  const ns=new Set();
+  for(let r=0;r<SZ;r++)for(let c=0;c<SZ;c++)if(board[r][c]!==-1&&bef[r][c]===-1)ns.add(r*SZ+c);
+  render(ms,ns);
+  if(score>bScore){bScore=score;saveSt();}
+  const el=document.getElementById('score');
+  el.textContent=score;
+  el.classList.remove('pop');void el.offsetWidth;el.classList.add('pop');
+  setTimeout(()=>el.classList.remove('pop'),280);
+  if(!hasWon&&hasZ()){hasWon=true;setTimeout(()=>showOv(true),320);return;}
+  if(!canMove()){isDead=true;setTimeout(()=>showOv(false),320);}
+}
+
+// ── OVERLAY ────────────────────────────────
+function showOv(win){
+  const ot=document.getElementById('ov-title'),os=document.getElementById('ov-sub'),ob=document.getElementById('ov-act');
+  if(win){ot.textContent='You reached Z! 🎉';ot.className='ov-title win';os.textContent='Amazing! Keep playing or start fresh.';ob.textContent='▶ Keep going';ob.onclick=()=>{hideOv();isDead=false;};}
+  else{ot.textContent='Game Over!';ot.className='ov-title';os.textContent='No moves available.';ob.textContent='↻ Try again';ob.onclick=resetGame;}
+  document.getElementById('overlay').classList.add('show');
+}
+function hideOv(){document.getElementById('overlay').classList.remove('show');}
+function resetGame(){hideOv();initBoard();render(null,null);}
+
+// ── KEYBOARD ───────────────────────────────
+document.addEventListener('keydown',e=>{
+  if(isDead)return;
+  const m={ArrowUp:0,ArrowDown:1,ArrowLeft:2,ArrowRight:3};
+  if(m[e.key]!==undefined){e.preventDefault();humanMove(m[e.key]);}
+  if(e.key==='Escape')closeSB();
+});
+
+// ── SWIPE ──────────────────────────────────
+let tx=0,ty=0;
+const bw=document.getElementById('bwrap');
+bw.addEventListener('touchstart',e=>{tx=e.touches[0].clientX;ty=e.touches[0].clientY;},{passive:true});
+bw.addEventListener('touchend',e=>{
+  if(isDead)return;
+  const dx=e.changedTouches[0].clientX-tx,dy=e.changedTouches[0].clientY-ty;
+  if(Math.max(Math.abs(dx),Math.abs(dy))<18)return;
+  humanMove(Math.abs(dx)>Math.abs(dy)?(dx>0?3:2):(dy>0?1:0));
+},{passive:true});
+
+// ── SIDEBAR ────────────────────────────────
+function openSB(){document.getElementById('sidebar').classList.add('open');document.getElementById('sb-bd').classList.add('open');document.body.style.overflow='hidden';}
+function closeSB(){document.getElementById('sidebar').classList.remove('open');document.getElementById('sb-bd').classList.remove('open');document.body.style.overflow='';}
+
+// ── PAGE NAV ───────────────────────────────
+const PAGES=['game','how','about','privacy','contact'];
+function gp(name){
+  PAGES.forEach(p=>{
+    document.getElementById('page-'+p).classList.toggle('active',p===name);
+    const sn=document.getElementById('sn-'+p);if(sn)sn.classList.toggle('on',p===name);
+  });
+  window.scrollTo(0,0);
+}
+
+// ── ALPHA REF ──────────────────────────────
+function buildRef(){
+  const el=document.getElementById('alpha-ref');if(!el)return;
+  LTRS.split('').forEach((l,i)=>{
+    const d=document.createElement('div');d.className='acell';
+    d.style.background=TC[i];d.style.color=TX[i];
+    const p=Math.pow(2,i+1),f=p>=1e6?(p/1e6).toFixed(0)+'M':p>=1000?(p/1000).toFixed(p%1000===0?0:1)+'K':p;
+    d.innerHTML=`${l}<small>${f}</small>`;el.appendChild(d);
+  });
+}
+
+// ── CONTACT ────────────────────────────────
+async function submitContact(){
+  const name=document.getElementById('fn').value.trim(),email=document.getElementById('fe').value.trim(),
+        subj=document.getElementById('fs').value.trim(),msg=document.getElementById('fm').value.trim();
+  const stat=document.getElementById('fstat'),btn=document.getElementById('fsend');
+  stat.className='fstat';
+  if(!name||!email||!msg){stat.className='fstat er';stat.textContent='⚠ Please fill Name, Email and Message.';return;}
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){stat.className='fstat er';stat.textContent='⚠ Invalid email.';return;}
+  btn.disabled=true;btn.textContent='Sending…';
+  try{
+    const res=await fetch('https://formspree.io/f/mojyyaav',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},
+      body:JSON.stringify({name,email,_replyto:email,_subject:(subj||'AlphaMerge Contact')+' — from '+name,subject:subj||'AlphaMerge Contact',message:msg})});
+    if(res.ok){stat.className='fstat ok';stat.textContent="✅ Sent! We'll reply soon.";['fn','fe','fs','fm'].forEach(id=>document.getElementById(id).value='');}
+    else{const d=await res.json().catch(()=>({}));stat.className='fstat er';stat.textContent='❌ '+(d.error||'Error. Email us directly.');}
+  }catch(e){stat.className='fstat er';stat.textContent='❌ Network error. Email Ycherrab@outlook.com.';}
+  finally{btn.disabled=false;btn.textContent='✉ Send Message';}
+}
+
+// ── SERVICE WORKER (PWA offline) ──────────
+if('serviceWorker' in navigator){
+  const sw=`const C='am-v1';self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['./'])));self.skipWaiting();});self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))));self.clients.claim();});self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).catch(()=>caches.match('./'))));});`;
+  const blob=new Blob([sw],{type:'text/javascript'});
+  navigator.serviceWorker.register(URL.createObjectURL(blob),{scope:'./'}).catch(()=>{});
+}
+
+// ── INSTALL PROMPT ─────────────────────────
+let dp=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();dp=e;document.getElementById('install-banner').classList.add('show');});
+document.getElementById('inst-btn').onclick=async()=>{if(!dp)return;dp.prompt();await dp.userChoice;dp=null;document.getElementById('install-banner').classList.remove('show');};
+document.getElementById('inst-x').onclick=()=>document.getElementById('install-banner').classList.remove('show');
+
+// ── BOOT ───────────────────────────────────
+loadSt();buildGhosts();buildRef();initBoard();render(null,null);
+</script>
+</body>
+  </html>
